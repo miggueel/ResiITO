@@ -1,0 +1,28 @@
+
+# Dependencias
+node_modules/
+
+# Variables de entorno
+.env
+.env.*
+!.env.example
+
+# Archivos PDF subidos
+uploads/
+backend/uploads/
+
+# Archivos temporales
+*.log
+npm-debug.log*
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Visual Studio Code
+.vscode/
+
+# Compilaciones
+dist/
+build/
+coverage/
