@@ -270,3 +270,36 @@ export const cambiarEstado = async (req, res) => {
     });
   }
 };
+
+// Empresa consulta las residencias de sus vacantes
+export const residenciasEmpresa = async (req, res) => {
+  try {
+    const resultado = await query(
+      `SELECT
+         r.*,
+         u.nombre AS alumno,
+         a.matricula,
+         a.carrera,
+         v.titulo AS vacante,
+         ev.id AS evaluacion_id,
+         ev.calificacion
+       FROM residencias r
+       JOIN postulaciones p ON r.postulacion_id = p.id
+       JOIN alumnos a ON p.alumno_id = a.id
+       JOIN usuarios u ON a.usuario_id = u.id
+       JOIN vacantes v ON p.vacante_id = v.id
+       JOIN empresas e ON v.empresa_id = e.id
+       LEFT JOIN evaluaciones ev ON ev.residencia_id = r.id
+       WHERE e.usuario_id = $1
+       ORDER BY r.id DESC`,
+      [req.usuario.id]
+    );
+
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      mensaje: 'Error al consultar residencias de la empresa'
+    });
+  }
+};

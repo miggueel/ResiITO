@@ -188,3 +188,23 @@ export const eliminarVacante = async (req, res) => {
     res.status(500).json({ mensaje: 'Error al eliminar vacante' });
   }
 };
+
+// GET - Vacantes de la empresa autenticada
+export const misVacantes = async (req, res) => {
+  try {
+    const resultado = await query(
+      `SELECT v.*, e.nombre AS empresa,
+              (SELECT COUNT(*)::int FROM postulaciones p WHERE p.vacante_id = v.id) AS total_postulaciones
+       FROM vacantes v
+       JOIN empresas e ON v.empresa_id = e.id
+       WHERE e.usuario_id = $1
+       ORDER BY v.id DESC`,
+      [req.usuario.id]
+    );
+
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ mensaje: 'Error al consultar tus vacantes' });
+  }
+};

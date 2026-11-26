@@ -6,7 +6,8 @@ import {
   aprobarResidencia,
   listarResidencias,
   misResidencias,
-  cambiarEstado
+  cambiarEstado,
+  residenciasEmpresa
 } from '../controllers/residenciasController.js';
 
 import {
@@ -54,6 +55,25 @@ router.get(
   verificarToken,
   permitirRoles('alumno'),
   misResidencias
+);
+
+/**
+ * @openapi
+ * /api/residencias/empresa:
+ *   get:
+ *     tags: [Residencias]
+ *     summary: Empresa consulta las residencias de sus vacantes
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Residencias de la empresa con su evaluación, si existe
+ */
+router.get(
+  '/empresa',
+  verificarToken,
+  permitirRoles('empresa'),
+  residenciasEmpresa
 );
 
 /**
