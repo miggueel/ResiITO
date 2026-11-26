@@ -6,7 +6,8 @@ import {
   obtenerVacante,
   crearVacante,
   actualizarVacante,
-  eliminarVacante
+  eliminarVacante,
+  misVacantes
 } from '../controllers/vacantesController.js';
 
 import {
@@ -67,6 +68,25 @@ const router = Router();
  *         description: Lista de vacantes
  */
 router.get('/', listarVacantes);
+
+/**
+ * @openapi
+ * /api/vacantes/mias:
+ *   get:
+ *     tags: [Vacantes]
+ *     summary: Empresa consulta sus propias vacantes
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Vacantes de la empresa autenticada
+ */
+router.get(
+  '/mias',
+  verificarToken,
+  permitirRoles('empresa'),
+  misVacantes
+);
 
 /**
  * @openapi

@@ -4,9 +4,6 @@ node_modules/
 
 # Variables de entorno
 .env
-.env.*
-!.env.example
-
 # Archivos PDF subidos
 uploads/
 backend/uploads/
