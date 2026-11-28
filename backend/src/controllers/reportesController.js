@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import pool, { query } from '../config/database.js';
+import { rutaReporte } from '../config/archivos.js';
 import { contextoResidencia, puedeVerResidencia, SQL_EQUIPO_DE_VACANTE } from '../utils/permisos.js';
 import { idValido, textoRequerido } from '../utils/validaciones.js';
 
@@ -179,7 +180,7 @@ export const reemplazarReporte = async (req, res) => {
       return res.status(409).json({ mensaje: 'El reporte cambió de estado; recarga la página' });
     }
 
-    await eliminarArchivo(path.resolve('uploads', 'reportes', nombreGuardado(contexto.reporte.archivo_pdf)));
+    await eliminarArchivo(rutaReporte(nombreGuardado(contexto.reporte.archivo_pdf)));
     res.json({ mensaje: 'Corrección entregada', reporte: resultado.rows[0] });
   } catch (error) {
     await eliminarArchivo(req.file);
@@ -431,7 +432,7 @@ export const descargarReporte = async (req, res) => {
     }
 
     return res.download(
-      path.resolve('uploads', 'reportes', nombreArchivo),
+      rutaReporte(nombreArchivo),
       `reporte-${id}.pdf`,
       (error) => {
         if (error) {

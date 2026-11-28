@@ -20,7 +20,14 @@ dotenv.config();
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 
-app.use(cors());
+// En producción solo el frontend (FRONTEND_URL) puede llamar a la API desde el navegador.
+// Se aceptan varias URL separadas por comas.
+const origenes = (process.env.FRONTEND_URL || '')
+  .split(',').map((o) => o.trim().replace(/\/$/, '')).filter(Boolean);
+
+app.use(cors(
+  process.env.NODE_ENV === 'production' && origenes.length > 0 ? { origin: origenes } : {}
+));
 app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/vacantes', vacantesRoutes);

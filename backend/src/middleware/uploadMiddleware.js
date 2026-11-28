@@ -1,13 +1,7 @@
 
 import multer from 'multer';
-import fs from 'node:fs';
-import path from 'node:path';
 import crypto from 'node:crypto';
-
-const carpetaReportes = path.resolve('uploads', 'reportes');
-
-// Crear la carpeta si todavía no existe
-fs.mkdirSync(carpetaReportes, { recursive: true });
+import { carpetaReportes } from '../config/archivos.js';
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {

@@ -11,8 +11,11 @@ const options = {
     },
     servers: [
       {
-        url: 'http://localhost:3000',
-        description: 'Servidor local'
+        // En Railway, RAILWAY_PUBLIC_DOMAIN es el dominio público del backend
+        url: process.env.RAILWAY_PUBLIC_DOMAIN
+          ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+          : `http://localhost:${process.env.PORT || 3000}`,
+        description: process.env.RAILWAY_PUBLIC_DOMAIN ? 'Producción' : 'Servidor local'
       }
     ],
     components: {

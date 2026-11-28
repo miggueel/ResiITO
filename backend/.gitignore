@@ -8,9 +8,6 @@ node_modules/
 uploads/
 backend/uploads/
 
-# Archivos de base de datos
-database/migraciones/
-scripts/migrar.js
 
 # Archivos temporales
 *.log
@@ -27,3 +24,6 @@ Thumbs.db
 dist/
 build/
 coverage/
+
+# Respaldos de la base con datos reales (no se suben)
+database/*.sql
