@@ -1,12 +1,13 @@
 import { useState } from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { INICIO_POR_ROL, useAuth } from '../auth.jsx'
 import Campo from '../components/Campo.jsx'
 
 export default function Entrar() {
   const { usuario, entrar } = useAuth()
   const navegar = useNavigate()
-  const desde = useLocation().state?.desde
+  const { state } = useLocation()
+  const desde = state?.desde
   const [error, setError] = useState(null)
   const [enviando, setEnviando] = useState(false)
 
@@ -31,8 +32,9 @@ export default function Entrar() {
   return (
     <section className="acceso">
       <h1>Iniciar sesión</h1>
+      {state?.aviso && <p className="aviso-pagina" role="status">{state.aviso}</p>}
       <form className="hoja formulario" onSubmit={enviar}>
-        <Campo etiqueta="Correo" name="correo" type="email" autoComplete="email" required autoFocus />
+        <Campo etiqueta="Correo" name="correo" type="email" autoComplete="email" required autoFocus defaultValue={state?.correo} />
         <Campo etiqueta="Contraseña" name="password" type="password" autoComplete="current-password" required />
         {error && <p className="error-formulario" role="alert">{error}</p>}
         <button type="submit" className="boton boton--primario boton--ancho" disabled={enviando}>
@@ -40,8 +42,9 @@ export default function Entrar() {
         </button>
       </form>
       <p className="acceso-pie">
-        ¿Aún no tienes cuenta? <Link to="/registro">Crea una como alumno o empresa</Link>.
-        Las cuentas de coordinación las da de alta el Tecnológico.
+        Las cuentas las da de alta la coordinación de residencias. Si te registraron, revisa tu
+        correo para activar tu cuenta. ¿Olvidaste tu contraseña? Pide a la coordinación que te
+        envíe un enlace para restablecerla.
       </p>
     </section>
   )

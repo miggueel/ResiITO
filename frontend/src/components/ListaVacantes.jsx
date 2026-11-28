@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useDatos } from '../useDatos.js'
 import { Bloque, Vacio } from './Estados.jsx'
 import Estado from './Estado.jsx'
-import { CARRERAS, fecha } from '../formato.js'
+import { CARRERAS, fecha, lugares } from '../formato.js'
 
 // Bolsa de vacantes activas con filtro por carrera.
 // `accion(vacante)` devuelve el control a la derecha de cada vacante.
@@ -55,8 +55,12 @@ export default function ListaVacantes({ accion }) {
                   <details>
                     <summary>
                       <span className="vacante-titulo">{v.titulo}</span>
-                      <span className="vacante-empresa">{v.empresa}</span>
-                      {v.carrera && <span className="vacante-carrera">{v.carrera}</span>}
+                      <span className="vacante-empresa">
+                        {v.empresa}{v.estado_republica && `, ${v.estado_republica}`}
+                      </span>
+                      <span className="vacante-carrera">
+                        {v.carrera ? `${v.carrera}. ` : ''}{lugares(v)}
+                      </span>
                     </summary>
                     <div className="vacante-detalle">
                       {v.descripcion && (

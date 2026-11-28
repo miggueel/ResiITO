@@ -7,6 +7,7 @@ import Estado from '../../components/Estado.jsx'
 import Campo from '../../components/Campo.jsx'
 import Dialogo from '../../components/Dialogo.jsx'
 import { useAvisos } from '../../components/Avisos.jsx'
+import Docentes from '../../components/Docentes.jsx'
 import { CARRERAS } from '../../formato.js'
 
 function FormularioVacante({ vacante, onGuardada }) {
@@ -14,6 +15,7 @@ function FormularioVacante({ vacante, onGuardada }) {
   const [error, setError] = useState(null)
   const [enviando, setEnviando] = useState(false)
   const editando = Boolean(vacante)
+  const aprobada = ['activa', 'cerrada'].includes(vacante?.estado)
 
   async function enviar(e) {
     e.preventDefault()
@@ -23,7 +25,7 @@ function FormularioVacante({ vacante, onGuardada }) {
       descripcion: f.descripcion.trim() || null,
       carrera: f.carrera.trim() || null,
       requisitos: f.requisitos.trim() || null,
-      ...(editando && { estado: f.estado }),
+      ...(aprobada && { estado: f.estado }),
     }
     setEnviando(true)
     setError(null)
@@ -32,7 +34,7 @@ function FormularioVacante({ vacante, onGuardada }) {
         method: editando ? 'PUT' : 'POST',
         body: cuerpo,
       })
-      avisar(editando ? 'Cambios guardados.' : 'Vacante publicada.')
+      avisar(editando ? (aprobada ? 'Cambios guardados.' : 'Proyecto enviado a coordinación.') : 'Proyecto enviado a coordinación para su aprobación.')
       onGuardada()
     } catch (err) {
       setError(err.message)
@@ -49,8 +51,11 @@ function FormularioVacante({ vacante, onGuardada }) {
       </datalist>
       <Campo etiqueta="Descripción" name="descripcion" como="textarea" rows={4} defaultValue={vacante?.descripcion ?? ''} />
       <Campo etiqueta="Requisitos" name="requisitos" como="textarea" rows={3} defaultValue={vacante?.requisitos ?? ''} />
-      {editando && (
-        <Campo etiqueta="Estado" name="estado" como="select" defaultValue={vacante.estado}>
+      {vacante?.estado === 'rechazada' && (
+        <p className="error-formulario">Motivo del rechazo: {vacante.motivo_rechazo}</p>
+      )}
+      {aprobada && (
+        <Campo etiqueta="Estado">
           {(id) => (
             <select id={id} name="estado" defaultValue={vacante.estado}>
               <option value="activa">Activa, recibe postulaciones</option>
@@ -61,7 +66,7 @@ function FormularioVacante({ vacante, onGuardada }) {
       )}
       {error && <p className="error-formulario" role="alert">{error}</p>}
       <button type="submit" className="boton boton--primario" disabled={enviando}>
-        {editando ? (enviando ? 'Guardando…' : 'Guardar cambios') : (enviando ? 'Publicando…' : 'Publicar vacante')}
+        {enviando ? 'Enviando…' : aprobada ? 'Guardar cambios' : 'Enviar a coordinación'}
       </button>
     </form>
   )
@@ -91,17 +96,17 @@ export default function MisVacantes() {
   return (
     <>
       <Encabezado
-        titulo="Mis vacantes"
-        accion={<button type="button" className="boton boton--primario" onClick={() => setDialogo({ nueva: true })}>Publicar vacante</button>}
+        titulo="Mis proyectos"
+        accion={<button type="button" className="boton boton--primario" onClick={() => setDialogo({ nueva: true })}>Proponer proyecto</button>}
       >
-        Los alumnos ven tus vacantes activas y se postulan desde la bolsa de vacantes.
+        La coordinación revisa cada proyecto, define cuántos alumnos puede recibir y le asigna asesor y revisor. Al aprobarlo, los alumnos lo ven y se postulan.
       </Encabezado>
 
       <Bloque estado={estado}>
         {(vacantes) =>
           vacantes.length === 0 ? (
-            <Vacio titulo="Aún no publicas vacantes.">
-              <p>Publica la primera para empezar a recibir postulaciones de alumnos del Tecnológico.</p>
+            <Vacio titulo="Aún no propones proyectos.">
+              <p>Propón el primero para que la coordinación lo revise y lo publique para los alumnos.</p>
             </Vacio>
           ) : (
             <ul className="hoja lista-filas">
@@ -111,13 +116,16 @@ export default function MisVacantes() {
                     <strong>{v.titulo}</strong>
                     <small>
                       {v.carrera || 'Cualquier carrera'}
-                      {', '}
+                      {v.cupo != null && `. Cupo: ${v.aceptados} de ${v.cupo}`}
+                      {'. '}
                       {v.total_postulaciones === 1 ? '1 postulación' : `${v.total_postulaciones} postulaciones`}
                     </small>
+                    {v.estado === 'rechazada' && <small className="alerta-texto">Motivo: {v.motivo_rechazo}. Corrígelo y vuelve a enviarlo.</small>}
+                    {['activa', 'cerrada'].includes(v.estado) && <Docentes lista={v.docentes} vacio="Coordinación aún no asigna docentes" />}
                   </span>
-                  <Estado valor={v.estado} />
+                  <Estado valor={v.estado} etiqueta={v.estado === 'pendiente' ? 'En revisión' : undefined} />
                   <span className="fila-acciones">
-                    <button type="button" className="boton boton--tenue" onClick={() => setDialogo({ vacante: v })}>Editar</button>
+                    <button type="button" className="boton boton--tenue" onClick={() => setDialogo({ vacante: v })}>{v.estado === 'rechazada' ? 'Corregir' : 'Editar'}</button>
                     <button type="button" className="boton boton--tenue boton--peligro" onClick={() => eliminar(v)}>Eliminar</button>
                   </span>
                 </li>
@@ -127,7 +135,7 @@ export default function MisVacantes() {
         }
       </Bloque>
 
-      <Dialogo abierto={Boolean(dialogo)} onCerrar={cerrar} titulo={dialogo?.vacante ? 'Editar vacante' : 'Publicar vacante'}>
+      <Dialogo abierto={Boolean(dialogo)} onCerrar={cerrar} titulo={dialogo?.vacante ? 'Editar proyecto' : 'Proponer proyecto'}>
         <FormularioVacante
           key={dialogo?.vacante?.id ?? 'nueva'}
           vacante={dialogo?.vacante}

@@ -8,6 +8,7 @@ node_modules/
 uploads/
 backend/uploads/
 
+
 # Archivos temporales
 *.log
 npm-debug.log*
@@ -23,3 +24,6 @@ Thumbs.db
 dist/
 build/
 coverage/
+
+# Respaldos de la base con datos reales (no se suben)
+database/*.sql

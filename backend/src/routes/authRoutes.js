@@ -1,46 +1,16 @@
-
 import { Router } from 'express';
-import { registrar, login, perfil } from '../controllers/authController.js';
+import {
+  login,
+  perfil,
+  cambiarPassword,
+  consultarEnlace,
+  usarEnlace
+} from '../controllers/authController.js';
 import { verificarToken } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
-/**
- * @openapi
- * /api/auth/registro:
- *   post:
- *     tags: [Autenticación]
- *     summary: Registrar alumno o empresa
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [nombre, correo, password, rol]
- *             properties:
- *               nombre:
- *                 type: string
- *                 example: Alumno Prueba
- *               correo:
- *                 type: string
- *                 example: alumno@itoaxaca.edu.mx
- *               password:
- *                 type: string
- *                 format: password
- *                 example: PruebaSegura2026!
- *               rol:
- *                 type: string
- *                 enum: [alumno, empresa]
- *     responses:
- *       201:
- *         description: Usuario registrado
- *       400:
- *         description: Datos inválidos
- *       409:
- *         description: Correo duplicado
- */
-router.post('/registro', registrar);
+// El registro público ya no existe: coordinación da de alta a los usuarios (/api/usuarios).
 
 /**
  * @openapi
@@ -56,18 +26,11 @@ router.post('/registro', registrar);
  *             type: object
  *             required: [correo, password]
  *             properties:
- *               correo:
- *                 type: string
- *                 example: alumno@itoaxaca.edu.mx
- *               password:
- *                 type: string
- *                 format: password
- *                 example: PruebaSegura2026!
+ *               correo: { type: string, example: alumno@itoaxaca.edu.mx }
+ *               password: { type: string, format: password }
  *     responses:
- *       200:
- *         description: Inicio de sesión exitoso
- *       401:
- *         description: Credenciales incorrectas
+ *       200: { description: Inicio de sesión exitoso }
+ *       401: { description: Credenciales incorrectas o cuenta sin activar }
  */
 router.post('/login', login);
 
@@ -77,14 +40,67 @@ router.post('/login', login);
  *   get:
  *     tags: [Autenticación]
  *     summary: Consultar perfil autenticado
- *     security:
- *       - bearerAuth: []
+ *     security: [{ bearerAuth: [] }]
  *     responses:
- *       200:
- *         description: Perfil del usuario
- *       401:
- *         description: Token inválido o ausente
+ *       200: { description: Perfil del usuario }
+ *       401: { description: Token inválido o cuenta inactiva }
  */
 router.get('/perfil', verificarToken, perfil);
+
+/**
+ * @openapi
+ * /api/auth/password:
+ *   patch:
+ *     tags: [Autenticación]
+ *     summary: El usuario cambia su propia contraseña
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [password_actual, password_nueva]
+ *             properties:
+ *               password_actual: { type: string, format: password }
+ *               password_nueva: { type: string, format: password, minLength: 12 }
+ *     responses:
+ *       200: { description: Contraseña actualizada }
+ *       400: { description: Contraseña actual incorrecta o nueva inválida }
+ */
+router.patch('/password', verificarToken, cambiarPassword);
+
+/**
+ * @openapi
+ * /api/auth/enlace/{token}:
+ *   get:
+ *     tags: [Autenticación]
+ *     summary: Consultar un enlace de activación o restablecimiento
+ *     parameters:
+ *       - { in: path, name: token, required: true, schema: { type: string } }
+ *     responses:
+ *       200: { description: "Enlace vigente: tipo, nombre y correo" }
+ *       404: { description: Enlace usado, vencido o inexistente }
+ *   post:
+ *     tags: [Autenticación]
+ *     summary: Crear contraseña (activación) o elegir una nueva (restablecimiento)
+ *     description: La contraseña solo cambia cuando se usa el enlace. Es de un solo uso.
+ *     parameters:
+ *       - { in: path, name: token, required: true, schema: { type: string } }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [password]
+ *             properties:
+ *               password: { type: string, format: password, minLength: 12 }
+ *     responses:
+ *       200: { description: Contraseña guardada }
+ *       404: { description: Enlace usado, vencido o inexistente }
+ */
+router.get('/enlace/:token', consultarEnlace);
+router.post('/enlace/:token', usarEnlace);
 
 export default router;

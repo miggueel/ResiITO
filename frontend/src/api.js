@@ -49,16 +49,10 @@ export async function api(ruta, opciones) {
   return res.json().catch(() => null)
 }
 
-// Descarga un PDF protegido con JWT y lo abre en una pestaña nueva
-export async function abrirReporte(id) {
+// Pide un PDF protegido con JWT y devuelve una URL local (blob:) para mostrarlo.
+// Quien la use debe liberarla con URL.revokeObjectURL cuando ya no la necesite.
+export async function obtenerReporte(id) {
   const res = await solicitar(`/api/reportes/${id}/archivo`)
   const blob = await res.blob()
-  const url = URL.createObjectURL(blob)
-  const enlace = document.createElement('a')
-  enlace.href = url
-  enlace.target = '_blank'
-  enlace.rel = 'noopener'
-  enlace.download = `reporte-${id}.pdf`
-  enlace.click()
-  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  return URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }))
 }

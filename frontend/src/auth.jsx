@@ -8,6 +8,7 @@ export const INICIO_POR_ROL = {
   alumno: '/alumno',
   empresa: '/empresa',
   coordinador: '/coordinacion',
+  docente: '/docente',
 }
 
 // Lee la fecha de expiración del JWT (solo para cerrar la sesión a tiempo;
@@ -63,6 +64,16 @@ export function AuthProvider({ children }) {
     setUsuario(u)
   }, [])
 
+  // Actualiza datos del usuario en sesión sin volver a iniciarla
+  const actualizarUsuario = useCallback((cambios) => {
+    setUsuario((u) => {
+      if (!u) return u
+      const nuevo = { ...u, ...cambios }
+      localStorage.setItem(CLAVE_USUARIO, JSON.stringify(nuevo))
+      return nuevo
+    })
+  }, [])
+
   const entrar = useCallback(async (correo, password) => {
     const data = await api('/api/auth/login', { method: 'POST', body: { correo, password } })
     localStorage.setItem(CLAVE_TOKEN, data.token)
@@ -111,7 +122,7 @@ export function AuthProvider({ children }) {
   }, [salir])
 
   return (
-    <AuthContext.Provider value={{ usuario, entrar, salir, expirada, verificando }}>
+    <AuthContext.Provider value={{ usuario, entrar, salir, expirada, verificando, actualizarUsuario }}>
       {children}
     </AuthContext.Provider>
   )

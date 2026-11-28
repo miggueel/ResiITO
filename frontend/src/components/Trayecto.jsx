@@ -1,18 +1,17 @@
 // El trayecto de una residencia: cada etapa alcanzada queda "sellada".
-export const ETAPAS = [
-  { clave: 'aceptado', titulo: 'Aceptado', detalle: 'La empresa acepta la postulación' },
-  { clave: 'aprobada', titulo: 'Aprobada', detalle: 'Coordinación asigna asesor y fechas' },
-  { clave: 'en_proceso', titulo: 'En proceso', detalle: 'Se entregan reportes mensuales' },
-  { clave: 'finalizada', titulo: 'Finalizada', detalle: 'Reportes aprobados, falta evaluación' },
-  { clave: 'liberada', titulo: 'Liberada', detalle: 'Residencia concluida' },
+const ETAPAS = [
+  { clave: 'aceptado', titulo: 'Aceptado', detalle: 'Coordinación acepta al alumno en el proyecto' },
+  { clave: 'en_proceso', titulo: 'En proceso', detalle: 'Reportes revisados por asesor y revisor' },
+  { clave: 'finalizada', titulo: 'Finalizada', detalle: 'El docente aprueba el último reporte' },
+  { clave: 'liberada', titulo: 'Liberada', detalle: 'Evaluada por la empresa y liberada' },
 ]
 
-const GIROS = [-7, 4, -3, 6, -5]
+const NO_CONCLUIDA = { clave: 'no_concluida', titulo: 'No concluida', detalle: 'El proyecto se cerró sin concluir' }
 
-export function indiceEtapa(estado) {
-  const i = ETAPAS.findIndex((e) => e.clave === estado)
-  return i === -1 ? 0 : i
-}
+const GIROS = [-7, 4, -3, 6]
+
+// 'aprobada' (residencias anteriores) equivale a aceptada, aún sin iniciar
+const INDICE = { aceptado: 0, aprobada: 0, en_proceso: 1, finalizada: 2, no_concluida: 2, liberada: 3 }
 
 function Palomita() {
   return (
@@ -22,17 +21,28 @@ function Palomita() {
   )
 }
 
+function Cruz() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7 7l10 10M17 7L7 17" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 export default function Trayecto({ estado, compacto = false, animado = false }) {
-  // Cada etapa alcanzada queda sellada; la siguiente se marca como próxima
-  const actual = indiceEtapa(estado)
+  const actual = INDICE[estado] ?? 0
+  const fallida = estado === 'no_concluida'
+  const etapas = fallida ? [...ETAPAS.slice(0, 2), NO_CONCLUIDA] : ETAPAS
 
   return (
     <ol
       className={`trayecto${compacto ? ' trayecto--compacto' : ''}${animado ? ' trayecto--animado' : ''}`}
-      aria-label={`Trayecto de residencia: ${ETAPAS[actual].titulo}`}
+      style={{ '--etapas': etapas.length }}
+      aria-label={`Trayecto de residencia: ${etapas[actual].titulo}`}
     >
-      {ETAPAS.map((etapa, i) => {
-        const tipo = i <= actual ? 'sellada' : i === actual + 1 ? 'proxima' : 'pendiente'
+      {etapas.map((etapa, i) => {
+        let tipo = i <= actual ? 'sellada' : i === actual + 1 ? 'proxima' : 'pendiente'
+        if (fallida && i === actual) tipo = 'fallida'
         return (
           <li
             key={etapa.clave}
@@ -40,7 +50,9 @@ export default function Trayecto({ estado, compacto = false, animado = false }) 
             style={{ '--giro': `${GIROS[i]}deg`, '--i': i }}
             aria-current={i === actual ? 'step' : undefined}
           >
-            <span className="sello">{tipo === 'sellada' ? <Palomita /> : i + 1}</span>
+            <span className="sello">
+              {tipo === 'sellada' ? <Palomita /> : tipo === 'fallida' ? <Cruz /> : i + 1}
+            </span>
             <span className="etapa-texto">
               <strong>{etapa.titulo}</strong>
               {!compacto && <small>{etapa.detalle}</small>}

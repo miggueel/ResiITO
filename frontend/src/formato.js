@@ -24,3 +24,33 @@ export const CARRERAS = [
   'Licenciatura en Administración',
   'Licenciatura en Contaduría',
 ]
+
+export const ESTADOS_REPUBLICA = [
+  'Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche',
+  'Chiapas', 'Chihuahua', 'Ciudad de México', 'Coahuila', 'Colima',
+  'Durango', 'Estado de México', 'Guanajuato', 'Guerrero', 'Hidalgo',
+  'Jalisco', 'Michoacán', 'Morelos', 'Nayarit', 'Nuevo León', 'Oaxaca',
+  'Puebla', 'Querétaro', 'Quintana Roo', 'San Luis Potosí', 'Sinaloa',
+  'Sonora', 'Tabasco', 'Tamaulipas', 'Tlaxcala', 'Veracruz', 'Yucatán',
+  'Zacatecas',
+]
+
+export const FUNCION_DOCENTE = { asesor: 'Asesor', revisor: 'Revisor' }
+
+export function lugares(v) {
+  const libres = Math.max(0, (v.cupo ?? 0) - (v.aceptados ?? 0))
+  return libres === 1 ? '1 lugar disponible' : `${libres} lugares disponibles`
+}
+
+// Postulaciones en revisión que un alumno puede tener a la vez (igual que en el backend)
+export const MAX_POSTULACIONES = 3
+
+// Los alumnos aceptados en un mismo proyecto forman un equipo; se identifica por el proyecto
+export function codigoEquipo(vacanteId) {
+  return `EQ-${String(vacanteId).padStart(3, '0')}`
+}
+
+// Un proyecto recibe reportes solo cuando tiene asesor y revisor
+export function faltanDocentes(docentes = []) {
+  return ['asesor', 'revisor'].filter((f) => !docentes.some((d) => d.funcion === f))
+}

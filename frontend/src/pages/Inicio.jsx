@@ -13,16 +13,16 @@ export default function Inicio() {
         <div className="portada-texto">
           <h1>De la vacante a la liberación, en un solo expediente.</h1>
           <p>
-            Encuentra dónde hacer tu residencia profesional, sigue cada aprobación y entrega tus
-            reportes mensuales sin papeleo repetido. Las empresas publican vacantes y evalúan; la
-            coordinación del Tecnológico de Oaxaca valida cada paso.
+            Encuentra dónde hacer tu residencia profesional, entrega tus reportes y recibe las
+            observaciones de tu asesor y tu revisor en un mismo lugar. La coordinación del
+            Tecnológico de Oaxaca da de alta las cuentas y valida cada paso.
           </p>
           <div className="acciones">
             {usuario ? (
               <Link to="/alumno" className="boton boton--primario">Ver mi residencia</Link>
             ) : (
               <>
-                <Link to="/registro" className="boton boton--primario">Crear cuenta</Link>
+                <Link to="/entrar" className="boton boton--primario">Iniciar sesión</Link>
                 <a href="#vacantes-titulo" className="boton boton--secundario">Ver vacantes abiertas</a>
               </>
             )}
