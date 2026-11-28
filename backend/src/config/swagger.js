@@ -26,10 +26,14 @@ const options = {
     },
     tags: [
       { name: 'Sistema', description: 'Estado del servidor' },
-      { name: 'Autenticación', description: 'Registro e inicio de sesión' },
-      { name: 'Vacantes', description: 'Gestión de vacantes' },
+      { name: 'Autenticación', description: 'Inicio de sesión, activación y contraseñas' },
       { name: 'Postulaciones', description: 'Gestión de postulaciones' },
-      { name: 'Residencias', description: 'Gestión de residencias' }
+      { name: 'Usuarios', description: 'Alta de usuarios y restablecimiento (coordinación)' },
+      { name: 'Vacantes', description: 'Proyectos de empresas, cupo y docentes asignados' },
+      { name: 'Residencias', description: 'Gestión de residencias' },
+      { name: 'Reportes', description: 'Entrega y revisión docente de reportes' },
+      { name: 'Evaluaciones', description: 'Evaluación de la empresa' },
+      { name: 'Solicitudes', description: 'Solicitudes de cambio de estatus' }
     ]
   },
   apis: ['./src/routes/*.js']

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 
-export default function Dialogo({ abierto, onCerrar, titulo, children }) {
+export default function Dialogo({ abierto, onCerrar, titulo, ancho = false, children }) {
   const ref = useRef(null)
 
   useEffect(() => {
@@ -13,7 +13,7 @@ export default function Dialogo({ abierto, onCerrar, titulo, children }) {
   return (
     <dialog
       ref={ref}
-      className="dialogo"
+      className={`dialogo${ancho === 'pdf' ? ' dialogo--pdf' : ancho ? ' dialogo--ancho' : ''}`}
       onClose={onCerrar}
       onClick={(e) => e.target === ref.current && onCerrar()}
       aria-labelledby="dialogo-titulo"

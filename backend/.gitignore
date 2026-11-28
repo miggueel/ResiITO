@@ -8,6 +8,10 @@ node_modules/
 uploads/
 backend/uploads/
 
+# Archivos de base de datos
+database/migraciones/
+scripts/migrar.js
+
 # Archivos temporales
 *.log
 npm-debug.log*

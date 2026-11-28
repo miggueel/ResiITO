@@ -1,305 +1,167 @@
-
 import { query } from '../config/database.js';
+import {
+  contextoResidencia,
+  puedeVerResidencia,
+  SQL_DOCENTES_DE_VACANTE,
+  SQL_EQUIPO_DE_VACANTE
+} from '../utils/permisos.js';
+import { idValido } from '../utils/validaciones.js';
 
-// Consultar postulaciones aceptadas pendientes
-export const listarPendientes = async (req, res) => {
-  try {
-    const resultado = await query(
-      `SELECT
-         p.id AS postulacion_id,
-         u.nombre AS alumno,
-         a.matricula,
-         v.titulo AS vacante,
-         e.nombre AS empresa
-       FROM postulaciones p
-       JOIN alumnos a ON p.alumno_id = a.id
-       JOIN usuarios u ON a.usuario_id = u.id
-       JOIN vacantes v ON p.vacante_id = v.id
-       JOIN empresas e ON v.empresa_id = e.id
-       LEFT JOIN residencias r ON r.postulacion_id = p.id
-       WHERE p.estado = 'aceptado'
-         AND r.id IS NULL
-       ORDER BY p.id DESC`
-    );
+const SQL_BASE = `
+  SELECT
+    r.*,
+    u.nombre AS alumno,
+    u.correo AS correo_alumno,
+    a.id AS alumno_id,
+    a.matricula,
+    a.carrera,
+    v.id AS vacante_id,
+    v.titulo AS vacante,
+    e.nombre AS empresa,
+    v.cupo AS cupo_equipo,
+    ${SQL_DOCENTES_DE_VACANTE('v')} AS docentes,
+    ${SQL_EQUIPO_DE_VACANTE('v')} AS equipo,
+    -- Los reportes son del equipo (proyecto), no de cada alumno
+    (SELECT COUNT(*)::int FROM reportes rep WHERE rep.vacante_id = v.id) AS total_reportes,
+    (SELECT COUNT(*)::int FROM reportes rep
+     WHERE rep.vacante_id = v.id AND rep.estado = 'aprobado') AS reportes_aprobados,
+    (SELECT COUNT(*)::int FROM reportes rep
+     WHERE rep.vacante_id = v.id AND rep.estado = 'pendiente') AS reportes_pendientes,
+    ev.id AS evaluacion_id,
+    ev.calificacion,
+    (SELECT s.id FROM solicitudes_cambio_estado s
+     WHERE s.residencia_id = r.id AND s.estado = 'pendiente') AS solicitud_pendiente_id
+  FROM residencias r
+  JOIN postulaciones p ON r.postulacion_id = p.id
+  JOIN alumnos a ON p.alumno_id = a.id
+  JOIN usuarios u ON a.usuario_id = u.id
+  JOIN vacantes v ON p.vacante_id = v.id
+  JOIN empresas e ON v.empresa_id = e.id
+  LEFT JOIN evaluaciones ev ON ev.residencia_id = r.id`;
 
-    res.json(resultado.rows);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      mensaje: 'Error al consultar pendientes'
-    });
-  }
-};
-
-// Aprobar una residencia
-export const aprobarResidencia = async (req, res) => {
-  try {
-    const { postulacion_id, asesor, fecha_inicio, fecha_fin } = req.body;
-
-    if (
-      !Number.isInteger(postulacion_id) ||
-      postulacion_id <= 0 ||
-      typeof asesor !== 'string' ||
-      !asesor.trim() ||
-      typeof fecha_inicio !== 'string' ||
-      typeof fecha_fin !== 'string'
-    ) {
-      return res.status(400).json({
-        mensaje: 'Datos incompletos o inválidos'
-      });
-    }
-
-    const fechaValida = (fecha) => {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return false;
-
-      const valor = new Date(`${fecha}T00:00:00Z`);
-
-      return !Number.isNaN(valor.getTime()) &&
-        valor.toISOString().slice(0, 10) === fecha;
-    };
-
-    if (
-      !fechaValida(fecha_inicio) ||
-      !fechaValida(fecha_fin) ||
-      fecha_inicio > fecha_fin
-    ) {
-      return res.status(400).json({
-        mensaje: 'Las fechas son inválidas'
-      });
-    }
-
-    const resultado = await query(
-      `INSERT INTO residencias (
-         postulacion_id,
-         asesor,
-         fecha_inicio,
-         fecha_fin,
-         estado
-       )
-       SELECT p.id, $2, $3, $4, 'aprobada'
-       FROM postulaciones p
-       WHERE p.id = $1 AND p.estado = 'aceptado'
-       ON CONFLICT (postulacion_id) DO NOTHING
-       RETURNING *`,
-      [postulacion_id, asesor.trim(), fecha_inicio, fecha_fin]
-    );
-
-    if (resultado.rows.length === 0) {
-      return res.status(409).json({
-        mensaje: 'La postulación no está aceptada o ya tiene residencia'
-      });
-    }
-
-    res.status(201).json({
-      mensaje: 'Residencia aprobada correctamente',
-      residencia: resultado.rows[0]
-    });
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      mensaje: 'Error al aprobar residencia'
-    });
-  }
-};
-
-// Consultar todas las residencias
+// Coordinación: todas las residencias
 export const listarResidencias = async (req, res) => {
   try {
-    const resultado = await query(
-      `SELECT
-         r.*,
-         u.nombre AS alumno,
-         a.matricula,
-         v.titulo AS vacante,
-         e.nombre AS empresa
-       FROM residencias r
-       JOIN postulaciones p ON r.postulacion_id = p.id
-       JOIN alumnos a ON p.alumno_id = a.id
-       JOIN usuarios u ON a.usuario_id = u.id
-       JOIN vacantes v ON p.vacante_id = v.id
-       JOIN empresas e ON v.empresa_id = e.id
-       ORDER BY r.id DESC`
-    );
-
+    const resultado = await query(`${SQL_BASE} ORDER BY r.id DESC`);
     res.json(resultado.rows);
   } catch (error) {
     console.error(error);
-    res.status(500).json({
-      mensaje: 'Error al consultar residencias'
-    });
+    res.status(500).json({ mensaje: 'Error al consultar residencias' });
   }
 };
 
-// Alumno consulta sus residencias
+// Alumno: sus residencias, con sus asesores y revisores
 export const misResidencias = async (req, res) => {
   try {
     const resultado = await query(
-      `SELECT
-         r.*,
-         v.titulo AS vacante,
-         e.nombre AS empresa
-       FROM residencias r
-       JOIN postulaciones p ON r.postulacion_id = p.id
-       JOIN alumnos a ON p.alumno_id = a.id
-       JOIN vacantes v ON p.vacante_id = v.id
-       JOIN empresas e ON v.empresa_id = e.id
-       WHERE a.usuario_id = $1
-       ORDER BY r.id DESC`,
+      `${SQL_BASE} WHERE a.usuario_id = $1 ORDER BY r.id DESC`,
       [req.usuario.id]
     );
-
     res.json(resultado.rows);
   } catch (error) {
     console.error(error);
-    res.status(500).json({
-      mensaje: 'Error al consultar mis residencias'
-    });
+    res.status(500).json({ mensaje: 'Error al consultar mis residencias' });
   }
 };
 
-// Cambiar estado de residencia con validaciones
-export const cambiarEstado = async (req, res) => {
+// Empresa: residencias de sus proyectos
+export const residenciasEmpresa = async (req, res) => {
   try {
-    const id = Number(req.params.id);
-    const { estado } = req.body;
+    const resultado = await query(
+      `${SQL_BASE} WHERE e.usuario_id = $1 ORDER BY r.id DESC`,
+      [req.usuario.id]
+    );
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ mensaje: 'Error al consultar residencias de la empresa' });
+  }
+};
 
-    if (!Number.isInteger(id) || id <= 0) {
-      return res.status(400).json({
-        mensaje: 'ID de residencia inválido'
-      });
+// Docente: residencias de los proyectos donde es asesor o revisor
+export const residenciasDocente = async (req, res) => {
+  try {
+    const resultado = await query(
+      `SELECT base.*, dv.funcion AS mi_funcion
+       FROM (${SQL_BASE}) base
+       JOIN docentes_vacante dv ON dv.vacante_id = base.vacante_id
+       JOIN docentes d ON d.id = dv.docente_id
+       WHERE d.usuario_id = $1
+       ORDER BY base.reportes_pendientes DESC, base.id DESC`,
+      [req.usuario.id]
+    );
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ mensaje: 'Error al consultar tus residentes' });
+  }
+};
+
+// Detalle de una residencia (coordinación, alumno, empresa o docente asignado)
+export const obtenerResidencia = async (req, res) => {
+  try {
+    const id = idValido(req.params.id);
+    const contexto = id && await contextoResidencia(id, req.usuario.id);
+
+    if (!contexto) return res.status(404).json({ mensaje: 'Residencia no encontrada' });
+    if (!puedeVerResidencia(req.usuario, contexto)) {
+      return res.status(403).json({ mensaje: 'No tienes acceso a esta residencia' });
     }
 
-    const transiciones = {
-      aprobada: 'en_proceso',
-      en_proceso: 'finalizada',
-      finalizada: 'liberada'
-    };
+    const resultado = await query(`${SQL_BASE} WHERE r.id = $1`, [id]);
+    res.json({ ...resultado.rows[0], mi_funcion: contexto.funcion_docente ?? null });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ mensaje: 'Error al consultar la residencia' });
+  }
+};
 
-    const estadoAnterior = Object.keys(transiciones).find(
-      actual => transiciones[actual] === estado
-    );
+// Coordinación: iniciar una residencia aprobada o liberar una finalizada.
+// "Finalizada" y "no concluida" las decide el docente al revisar el último reporte.
+export const cambiarEstado = async (req, res) => {
+  try {
+    const id = idValido(req.params.id);
+    const { estado } = req.body;
+
+    if (!id) return res.status(400).json({ mensaje: 'ID de residencia inválido' });
+
+    const transiciones = { en_proceso: 'aprobada', liberada: 'finalizada' };
+    const estadoAnterior = transiciones[estado];
 
     if (!estadoAnterior) {
       return res.status(400).json({
-        mensaje: 'Estado no permitido'
+        mensaje: 'Coordinación solo puede iniciar (en_proceso) o liberar (liberada) una residencia'
       });
     }
 
-    // Actualización atómica: solo cambia el estado si
-    // se cumplen todas las condiciones necesarias.
     const resultado = await query(
       `UPDATE residencias r
        SET estado = $1
        WHERE r.id = $2
          AND r.estado = $3
-
-         -- Para finalizar o liberar debe existir
-         -- al menos un reporte aprobado.
-         AND (
-           $1 NOT IN ('finalizada', 'liberada')
-           OR EXISTS (
-             SELECT 1
-             FROM reportes rep
-             WHERE rep.residencia_id = r.id
-               AND rep.estado = 'aprobado'
-           )
-         )
-
-         -- No debe haber reportes sin aprobar.
-         AND (
-           $1 NOT IN ('finalizada', 'liberada')
-           OR NOT EXISTS (
-             SELECT 1
-             FROM reportes rep
-             WHERE rep.residencia_id = r.id
-               AND rep.estado <> 'aprobado'
-           )
-         )
-
-         -- Para liberar debe existir evaluación.
-         AND (
-           $1 <> 'liberada'
-           OR EXISTS (
-             SELECT 1
-             FROM evaluaciones ev
-             WHERE ev.residencia_id = r.id
-           )
-         )
-
+         AND ($1 <> 'liberada' OR EXISTS (
+           SELECT 1 FROM evaluaciones ev WHERE ev.residencia_id = r.id
+         ))
        RETURNING *`,
       [estado, id, estadoAnterior]
     );
 
     if (resultado.rows.length === 0) {
-      const residencia = await query(
-        `SELECT estado
-         FROM residencias
-         WHERE id = $1`,
-        [id]
-      );
-
-      if (residencia.rows.length === 0) {
-        return res.status(404).json({
-          mensaje: 'Residencia no encontrada'
-        });
+      const actual = await query('SELECT estado FROM residencias WHERE id = $1', [id]);
+      if (actual.rows.length === 0) {
+        return res.status(404).json({ mensaje: 'Residencia no encontrada' });
       }
-
-      if (residencia.rows[0].estado !== estadoAnterior) {
-        return res.status(409).json({
-          mensaje: 'Transición de estado no permitida'
-        });
+      if (actual.rows[0].estado !== estadoAnterior) {
+        return res.status(409).json({ mensaje: 'Transición de estado no permitida' });
       }
-
       return res.status(409).json({
-        mensaje:
-          'No se puede actualizar la residencia. Verifica que exista al menos un reporte aprobado, que todos los reportes estén aprobados y, para liberar, que exista una evaluación.'
+        mensaje: 'No se puede liberar: la empresa aún no registra la evaluación del residente.'
       });
     }
 
-    res.json({
-      mensaje: 'Estado actualizado correctamente',
-      residencia: resultado.rows[0]
-    });
-
+    res.json({ mensaje: 'Estado actualizado correctamente', residencia: resultado.rows[0] });
   } catch (error) {
     console.error(error);
-
-    res.status(500).json({
-      mensaje: 'Error al actualizar estado'
-    });
-  }
-};
-
-// Empresa consulta las residencias de sus vacantes
-export const residenciasEmpresa = async (req, res) => {
-  try {
-    const resultado = await query(
-      `SELECT
-         r.*,
-         u.nombre AS alumno,
-         a.matricula,
-         a.carrera,
-         v.titulo AS vacante,
-         ev.id AS evaluacion_id,
-         ev.calificacion
-       FROM residencias r
-       JOIN postulaciones p ON r.postulacion_id = p.id
-       JOIN alumnos a ON p.alumno_id = a.id
-       JOIN usuarios u ON a.usuario_id = u.id
-       JOIN vacantes v ON p.vacante_id = v.id
-       JOIN empresas e ON v.empresa_id = e.id
-       LEFT JOIN evaluaciones ev ON ev.residencia_id = r.id
-       WHERE e.usuario_id = $1
-       ORDER BY r.id DESC`,
-      [req.usuario.id]
-    );
-
-    res.json(resultado.rows);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      mensaje: 'Error al consultar residencias de la empresa'
-    });
+    res.status(500).json({ mensaje: 'Error al actualizar estado' });
   }
 };

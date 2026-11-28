@@ -1,83 +1,63 @@
 import { useState } from 'react'
-import { abrirReporte, api } from '../../api.js'
 import { useDatos } from '../../useDatos.js'
 import { Bloque, Vacio } from '../../components/Estados.jsx'
 import Encabezado from '../../components/Encabezado.jsx'
 import Estado from '../../components/Estado.jsx'
-import { useAvisos } from '../../components/Avisos.jsx'
-import { fecha } from '../../formato.js'
+import Observaciones from '../../components/Observaciones.jsx'
+import VistaPDF from '../../components/VistaPDF.jsx'
+import { codigoEquipo, fecha } from '../../formato.js'
 
+// Consulta: la revisión la hacen los docentes asesores y revisores
 export default function Reportes() {
-  const avisar = useAvisos()
   const estado = useDatos('/api/reportes')
-  const [soloPendientes, setSoloPendientes] = useState(true)
-  const [procesando, setProcesando] = useState(null)
-
-  async function revisar(r, nuevo) {
-    setProcesando(r.id)
-    try {
-      await api(`/api/reportes/${r.id}/estado`, { method: 'PATCH', body: { estado: nuevo } })
-      avisar(`Reporte ${r.numero_reporte} de ${r.alumno} ${nuevo}.`)
-      estado.recargar()
-    } catch (err) {
-      avisar(err.message, 'mal')
-    } finally {
-      setProcesando(null)
-    }
-  }
-
-  async function abrir(id) {
-    try {
-      await abrirReporte(id)
-    } catch (err) {
-      avisar(err.message, 'mal')
-    }
-  }
+  const [filtro, setFiltro] = useState('todos')
+  const [abierto, setAbierto] = useState(null)
+  const [viendo, setViendo] = useState(null)
 
   return (
     <>
-      <Encabezado titulo="Reportes mensuales">Abre el PDF antes de aprobar o rechazar.</Encabezado>
+      <Encabezado titulo="Reportes">Los asesores y revisores revisan los reportes. Aquí puedes consultarlos con sus observaciones.</Encabezado>
       <Bloque estado={estado}>
         {(todos) => {
-          const pendientes = todos.filter((r) => r.estado === 'pendiente')
-          const lista = soloPendientes ? pendientes : todos
+          const lista = filtro === 'todos' ? todos : todos.filter((r) => r.estado === filtro)
           return (
             <>
               <div className="pestanas" role="group" aria-label="Filtrar reportes">
-                <button type="button" aria-pressed={soloPendientes} onClick={() => setSoloPendientes(true)}>
-                  Por revisar ({pendientes.length})
-                </button>
-                <button type="button" aria-pressed={!soloPendientes} onClick={() => setSoloPendientes(false)}>
-                  Todos ({todos.length})
-                </button>
+                {[['todos', 'Todos'], ['pendiente', 'Por revisar'], ['rechazado', 'En corrección'], ['aprobado', 'Con visto bueno']].map(([v, t]) => (
+                  <button key={v} type="button" aria-pressed={filtro === v} onClick={() => setFiltro(v)}>
+                    {t} ({v === 'todos' ? todos.length : todos.filter((r) => r.estado === v).length})
+                  </button>
+                ))}
               </div>
               {lista.length === 0 ? (
-                <Vacio titulo={soloPendientes ? 'No hay reportes por revisar.' : 'Aún no se han entregado reportes.'} />
+                <Vacio titulo="No hay reportes en esta categoría." />
               ) : (
                 <ul className="hoja lista-filas">
                   {lista.map((r) => (
-                    <li key={r.id} className="fila">
+                    <li key={r.id} className="fila fila--alta fila--envuelve">
                       <span className="fila-cuerpo">
-                        <strong>{r.alumno}</strong>
-                        <small>Reporte {r.numero_reporte}, entregado el {fecha(r.fecha_entrega)}</small>
+                        <strong>
+                          {r.equipo.length > 1 ? `Equipo ${codigoEquipo(r.vacante_id)}` : r.alumno}, reporte {r.numero_reporte}{r.es_ultimo ? ' (último)' : ''}
+                        </strong>
+                        <small>{r.vacante}. Entregado el {fecha(r.fecha_actualizacion ?? r.fecha_entrega)}{r.alumno && ` por ${r.alumno}`}</small>
+                        {r.equipo.length > 1 && <small>Integrantes: {r.equipo.map((i) => i.nombre).join(', ')}</small>}
+                        {r.revisado_por_nombre && <small>Revisó: {r.revisado_por_nombre}</small>}
                       </span>
-                      <button type="button" className="boton boton--tenue" onClick={() => abrir(r.id)}>Abrir PDF</button>
-                      {r.estado === 'pendiente' ? (
-                        <span className="fila-acciones">
-                          <button type="button" className="boton boton--primario" disabled={procesando === r.id} onClick={() => revisar(r, 'aprobado')}>
-                            Aprobar
+                      <Estado valor={r.estado} etiqueta={r.estado === 'rechazado' ? 'En corrección' : undefined} />
+                      <span className="fila-acciones">
+                        {r.observaciones.length > 0 && (
+                          <button type="button" className="boton boton--tenue" aria-expanded={abierto === r.id} onClick={() => setAbierto(abierto === r.id ? null : r.id)}>
+                            {r.observaciones.length} {r.observaciones.length === 1 ? 'observación' : 'observaciones'}
                           </button>
-                          <button type="button" className="boton boton--secundario" disabled={procesando === r.id} onClick={() => revisar(r, 'rechazado')}>
-                            Rechazar
-                          </button>
-                        </span>
-                      ) : (
-                        <Estado valor={r.estado} />
-                      )}
+                        )}
+                        <button type="button" className="boton boton--tenue" onClick={() => setViendo(r)}>Ver PDF</button>
+                      </span>
+                      {abierto === r.id && <div className="fila-completa"><Observaciones lista={r.observaciones} /></div>}
                     </li>
                   ))}
                 </ul>
               )}
+              <VistaPDF reporte={viendo} onCerrar={() => setViendo(null)} />
             </>
           )
         }}

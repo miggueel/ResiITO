@@ -3,13 +3,15 @@ import { useDatos } from '../../useDatos.js'
 import { Bloque, Vacio } from '../../components/Estados.jsx'
 import Encabezado from '../../components/Encabezado.jsx'
 import Estado from '../../components/Estado.jsx'
-import { fecha } from '../../formato.js'
+import { fecha, MAX_POSTULACIONES } from '../../formato.js'
 
 export default function MisPostulaciones() {
   const estado = useDatos('/api/postulaciones/mis-postulaciones')
   return (
     <>
-      <Encabezado titulo="Mis postulaciones">Cada empresa acepta o rechaza tu postulación.</Encabezado>
+      <Encabezado titulo="Mis postulaciones">
+        La coordinación de residencias acepta o rechaza cada postulación. Puedes tener hasta {MAX_POSTULACIONES} en revisión; cuando te acepten en un proyecto, las demás se retiran automáticamente.
+      </Encabezado>
       <Bloque estado={estado}>
         {(lista) =>
           lista.length === 0 ? (

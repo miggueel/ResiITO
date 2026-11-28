@@ -7,6 +7,8 @@ import Trayecto from '../../components/Trayecto.jsx'
 import Campo from '../../components/Campo.jsx'
 import Dialogo from '../../components/Dialogo.jsx'
 import { useAvisos } from '../../components/Avisos.jsx'
+import Docentes from '../../components/Docentes.jsx'
+import Equipo from '../../components/Equipo.jsx'
 import { periodo } from '../../formato.js'
 
 function FormularioEvaluacion({ residencia, onGuardada }) {
@@ -62,7 +64,7 @@ export default function Residentes() {
         {(lista) =>
           lista.length === 0 ? (
             <Vacio titulo="Aún no tienes residentes.">
-              <p>Cuando coordinación apruebe la residencia de un alumno que aceptaste, aparecerá aquí.</p>
+              <p>Cuando la coordinación acepte alumnos en tus proyectos, aparecerán aquí.</p>
             </Vacio>
           ) : (
             <ul className="lista-expedientes">
@@ -72,6 +74,8 @@ export default function Residentes() {
                     <div className="fila-cuerpo">
                       <strong>{r.alumno}</strong>
                       <small>{r.vacante}, {periodo(r.fecha_inicio, r.fecha_fin)}</small>
+                      <Equipo vacanteId={r.vacante_id} integrantes={r.equipo} cupo={r.cupo_equipo} yo={r.id} compacto />
+                      <Docentes lista={r.docentes} />
                     </div>
                     {r.evaluacion_id ? (
                       <span className="evaluada">Evaluado con <span className="calificacion">{Number(r.calificacion)}</span></span>

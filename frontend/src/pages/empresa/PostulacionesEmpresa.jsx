@@ -1,35 +1,19 @@
 import { useState } from 'react'
-import { api } from '../../api.js'
 import { useDatos } from '../../useDatos.js'
 import { Bloque, Vacio } from '../../components/Estados.jsx'
 import Encabezado from '../../components/Encabezado.jsx'
 import Estado from '../../components/Estado.jsx'
-import { useAvisos } from '../../components/Avisos.jsx'
 import { fecha } from '../../formato.js'
 
+// Solo consulta: la coordinación acepta o rechaza a los alumnos
 export default function PostulacionesEmpresa() {
-  const avisar = useAvisos()
   const estado = useDatos('/api/postulaciones/empresa')
-  const [soloPendientes, setSoloPendientes] = useState(true)
-  const [procesando, setProcesando] = useState(null)
-
-  async function decidir(p, nuevo) {
-    setProcesando(p.id)
-    try {
-      await api(`/api/postulaciones/${p.id}/estado`, { method: 'PATCH', body: { estado: nuevo } })
-      avisar(nuevo === 'aceptado' ? `Aceptaste a ${p.alumno}.` : `Rechazaste la postulación de ${p.alumno}.`)
-      estado.recargar()
-    } catch (err) {
-      avisar(err.message, 'mal')
-    } finally {
-      setProcesando(null)
-    }
-  }
+  const [soloPendientes, setSoloPendientes] = useState(false)
 
   return (
     <>
-      <Encabezado titulo="Postulaciones recibidas">
-        Al aceptar a un alumno, coordinación recibe la solicitud para aprobar su residencia.
+      <Encabezado titulo="Postulaciones a mis proyectos">
+        La coordinación de residencias decide qué alumnos entran a cada proyecto según su cupo.
       </Encabezado>
       <Bloque estado={estado}>
         {(todas) => {
@@ -38,16 +22,16 @@ export default function PostulacionesEmpresa() {
           return (
             <>
               <div className="pestanas" role="group" aria-label="Filtrar postulaciones">
-                <button type="button" aria-pressed={soloPendientes} onClick={() => setSoloPendientes(true)}>
-                  Por decidir ({pendientes.length})
-                </button>
                 <button type="button" aria-pressed={!soloPendientes} onClick={() => setSoloPendientes(false)}>
                   Todas ({todas.length})
                 </button>
+                <button type="button" aria-pressed={soloPendientes} onClick={() => setSoloPendientes(true)}>
+                  En revisión ({pendientes.length})
+                </button>
               </div>
               {lista.length === 0 ? (
-                <Vacio titulo={soloPendientes ? 'No tienes postulaciones por decidir.' : 'Aún no recibes postulaciones.'}>
-                  <p>Las postulaciones nuevas aparecen aquí en cuanto un alumno se postula a una de tus vacantes.</p>
+                <Vacio titulo="No hay postulaciones aquí.">
+                  <p>Las postulaciones aparecen en cuanto un alumno se postula a uno de tus proyectos aprobados.</p>
                 </Vacio>
               ) : (
                 <ul className="hoja lista-filas">
@@ -62,18 +46,7 @@ export default function PostulacionesEmpresa() {
                         <span>{p.vacante}</span>
                         <small>Se postuló el {fecha(p.fecha_postulacion)}</small>
                       </span>
-                      {p.estado === 'pendiente' ? (
-                        <span className="fila-acciones">
-                          <button type="button" className="boton boton--primario" disabled={procesando === p.id} onClick={() => decidir(p, 'aceptado')}>
-                            Aceptar
-                          </button>
-                          <button type="button" className="boton boton--secundario" disabled={procesando === p.id} onClick={() => decidir(p, 'rechazado')}>
-                            Rechazar
-                          </button>
-                        </span>
-                      ) : (
-                        <Estado valor={p.estado} />
-                      )}
+                      <Estado valor={p.estado} etiqueta={p.estado === 'pendiente' ? 'En revisión' : undefined} />
                     </li>
                   ))}
                 </ul>
